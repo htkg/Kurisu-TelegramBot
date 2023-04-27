@@ -163,3 +163,5 @@ cython_debug/
 *.jpg
 *.ipynb
 *.env
+config.yaml
+*.vscode

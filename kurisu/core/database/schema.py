@@ -1,16 +1,10 @@
-from dotenv import dotenv_values
-from datetime import datetime
+from kurisu import db_cfg
 from peewee import *
 from playhouse.postgres_ext import PostgresqlExtDatabase
-
-config = dotenv_values("db.env")
+from loguru import logger
 
 db = PostgresqlExtDatabase(
-    config["db_name"],
-    user=config["db_user"],
-    password=config["db_pass"],
-    host=config["db_host"],
-    port=config["db_port"],
+    **db_cfg
 )
 
 
@@ -63,6 +57,7 @@ class Messages(BaseModel):
 def initialize_tables():
     with db:
         db.create_tables([Chat, Permission, ChatPermissions, Messages])
+        logger.success("Database tables initialized")
 
 
 def prune_db():
