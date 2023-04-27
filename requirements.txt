@@ -1,4 +1,6 @@
 loguru
 pyrogram
 tgcrypto
-uvloop
+python-dotenv
+peewee
+psycopg2-binary

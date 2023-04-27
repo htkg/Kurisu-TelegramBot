@@ -1,10 +1,15 @@
 from pyrogram import Client
-from app.utils import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN
+from dotenv import dotenv_values
+from kurisu.core.logger import setup_logging
+
+from loguru import logger
+
+setup_logging(log_dir="logs", log_level="INFO", json_logs=False)
+
+logger.info("Starting Kurisu...")
+config = dotenv_values(".env")
 
 app = Client(
-    name="bot",
-    api_id=TELEGRAM_API_ID,
-    api_hash=TELEGRAM_API_HASH,
-    bot_token=TELEGRAM_BOT_TOKEN,
+    **config,
     plugins=dict(root="kurisu.cogs")
 )
