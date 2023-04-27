@@ -3,6 +3,7 @@ from kurisu.core.logger import setup_logging
 import yaml
 from loguru import logger
 
+
 setup_logging(log_dir="logs", log_level="INFO", json_logs=False)
 
 
@@ -13,8 +14,9 @@ db_cfg = config["database"]
 tg_cfg = config["telegram"]
 
 logger.info("Starting Kurisu...")
+plugins_folder = dict(root="kurisu.cogs")
 
 app = Client(
     **tg_cfg,
-    plugins=dict(root="kurisu.cogs")
+    plugins=plugins_folder
 )

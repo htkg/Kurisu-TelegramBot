@@ -1,11 +1,9 @@
 from kurisu import db_cfg
 from peewee import *
-from playhouse.postgres_ext import PostgresqlExtDatabase
+from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 from loguru import logger
 
-db = PostgresqlExtDatabase(
-    **db_cfg
-)
+db = PostgresqlExtDatabase(**db_cfg)
 
 
 class BaseModel(Model):
@@ -30,8 +28,7 @@ class Permission(BaseModel):
 
 class ChatPermissions(BaseModel):
     chat = ForeignKeyField(Chat, backref="permissions", on_delete="CASCADE")
-    permission = ForeignKeyField(
-        Permission, backref="users", on_delete="CASCADE")
+    permission = ForeignKeyField(Permission, backref="users", on_delete="CASCADE")
     value = BooleanField(default=False)
 
     class Meta:
@@ -40,8 +37,7 @@ class ChatPermissions(BaseModel):
 
 class Messages(BaseModel):
     id = BigIntegerField()
-    from_chat = ForeignKeyField(
-        Chat, backref="messages", null=True, default=None)
+    from_chat = ForeignKeyField(Chat, backref="messages", null=True, default=None)
     date = DateTimeField()
     content = TextField(null=True)
     from_user = ForeignKeyField(
@@ -53,14 +49,32 @@ class Messages(BaseModel):
     class Meta:
         primary_key = CompositeKey("id", "from_chat")
 
+class Plugins(BaseModel):
+    id = PrimaryKeyField()
+    group = CharField(max_length=100)
+    name = CharField(max_length=100)
+    description = TextField(null=True)
+    version = CharField(max_length=10)
+
+    class Meta:
+        indexes = ((("group", "name"), True),)  # Create a unique index on group and name
+
+
+class PluginSettings(BaseModel):
+    plugin = ForeignKeyField(Plugins, backref="settings", on_delete="CASCADE")
+    chat = ForeignKeyField(Chat, backref="settings", on_delete="CASCADE")
+    settings = JSONField()
+    enabled = BooleanField(default=True)
+
+    class Meta:
+        indexes = ((("plugin", "chat"), True),)
 
 def initialize_tables():
     with db:
-        db.create_tables([Chat, Permission, ChatPermissions, Messages])
+        db.create_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings])
         logger.success("Database tables initialized")
 
 
 def prune_db():
     with db:
-        db.drop_tables(
-            [Chat, Permission, ChatPermissions, Messages], cascade=True)
+        db.drop_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings])

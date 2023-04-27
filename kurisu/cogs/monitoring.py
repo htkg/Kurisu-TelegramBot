@@ -1,4 +1,4 @@
-from kurisu.core.database.methods import *
+from kurisu.core.database.methods import create_user, create_group, create_message
 from pyrogram import Client, filters
 from pyrogram.enums.message_entity_type import MessageEntityType
 from pyrogram.enums.chat_type import ChatType
