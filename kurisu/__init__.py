@@ -12,6 +12,7 @@ with open("config.yaml", "r") as f:
 
 db_cfg = config["database"]
 tg_cfg = config["telegram"]
+sd_cfg = config["runpod"]
 
 logger.info("Starting Kurisu...")
 plugins_folder = dict(root="kurisu.cogs")

@@ -32,27 +32,31 @@ def get_cogs_info():
         # Iterate through all the items in the module
         for name, obj in inspect.getmembers(module):
             if (inspect.iscoroutinefunction(obj)):
-                group = module.__name__.split('.')[2] if len(module.__name__.split('.')) > 2 else None
-                version = "v1"
-                description = obj.__doc__ if obj.__doc__ else None
-                handlers = obj.handlers
-                result.append({
-                    "group": group,
-                    "handler": handlers,
-                    "name": name,
-                    "description": description,
-                    "version": version
-                })
+                try:
+                    group = module.__name__.split('.')[2] if len(module.__name__.split('.')) > 2 else None
+                    version = "v1"
+                    description = obj.__doc__ if obj.__doc__ else None
+                    handlers = obj.handlers
+                    result.append({
+                        "group": group,
+                        "handler": handlers,
+                        "name": name,
+                        "description": description,
+                        "version": version
+                    })
+                except AttributeError:
+                    pass
 
     return result
 
 def initalize_plugins():
+    #truncate_plugins()
     cogs_info = get_cogs_info()
     for cog in cogs_info:
         create_or_update_plugin(
             name=cog["name"],
             version=cog["version"],
             description=cog["description"],
-            group=cog["group"],
         )
         
+initalize_plugins()

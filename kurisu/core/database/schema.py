@@ -37,7 +37,7 @@ class ChatPermissions(BaseModel):
 
 class Messages(BaseModel):
     id = BigIntegerField()
-    from_chat = ForeignKeyField(Chat, backref="messages", null=True, default=None)
+    from_chat = ForeignKeyField(Chat, backref="messages")
     date = DateTimeField()
     content = TextField(null=True)
     from_user = ForeignKeyField(
@@ -50,31 +50,34 @@ class Messages(BaseModel):
         primary_key = CompositeKey("id", "from_chat")
 
 class Plugins(BaseModel):
-    id = PrimaryKeyField()
-    group = CharField(max_length=100)
-    name = CharField(max_length=100)
+    name = CharField(primary_key=True, max_length=100)
     description = TextField(null=True)
     version = CharField(max_length=10)
 
-    class Meta:
-        indexes = ((("group", "name"), True),)  # Create a unique index on group and name
-
-
 class PluginSettings(BaseModel):
-    plugin = ForeignKeyField(Plugins, backref="settings", on_delete="CASCADE")
-    chat = ForeignKeyField(Chat, backref="settings", on_delete="CASCADE")
-    settings = JSONField()
+    id = AutoField()
+    plugin = ForeignKeyField(Plugins, backref="settings")
+    chat = ForeignKeyField(Chat, backref="settings")
+    settings = JSONField(null=True)
     enabled = BooleanField(default=True)
-
+    
     class Meta:
         indexes = ((("plugin", "chat"), True),)
+        
+class RunPodTasks(BaseModel):
+    task_guid = CharField(max_length=256, primary_key=True)
+    date = DateTimeField()
+    chat = ForeignKeyField(Chat, backref="tasks")
+    user_id = BigIntegerField()
+    message_id = BigIntegerField()
+    status = CharField(max_length=60)
 
 def initialize_tables():
     with db:
-        db.create_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings])
+        db.create_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings, RunPodTasks])
         logger.success("Database tables initialized")
 
 
 def prune_db():
     with db:
-        db.drop_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings])
+        db.drop_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings, RunPodTasks])
