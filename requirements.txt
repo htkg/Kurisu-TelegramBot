@@ -1,6 +1,8 @@
-loguru
-pyrogram
-tgcrypto
-python-dotenv
-peewee
-psycopg2-binary
+charset-normalizer==3.1.0 
+loguru==0.7.0
+peewee==3.16.2
+pip-tools==6.13.0 
+psycopg2-binary==2.9.6 
+Pyrogram==2.0.104
+python-dotenv==1.0.0 
+win32-setctime==1.1.0 
