@@ -29,7 +29,7 @@ def create_group(id, type, **kwargs):
 
 
 def create_user(id, **kwargs):
-    user, created = init_chat(id, type="PRIVATE", **kwargs)
+    user, created = init_chat(id, type="ChatType.PRIVATE", **kwargs)
     if created:
         logger.success(f"New user: {kwargs['username']} ({id})")
     return user, created
