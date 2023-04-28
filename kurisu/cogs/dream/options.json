@@ -1,6 +1,6 @@
 {
     "orientation": ["portrait", "landscape", "square"],
-    "sampler": ["Euler a", "DPM2 Karras", "DPM++ 2S a Karras", "DPM++ 2M", "DPM++ SDE Karras"],
+    "sampler": ["Euler a", "DPM2 Karras", "DPM++ 2S a Karras", "DPM++ 2M", "DPM++ SDE Karras", "UniPC", "DPM++ 2M Karras"],
     "batch_size": ["2", "4"],
     "cfg_scale": ["5", "7.5", "9"],
     "steps": ["20", "28", "30"],

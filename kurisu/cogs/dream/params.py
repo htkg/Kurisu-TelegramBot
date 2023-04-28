@@ -7,14 +7,16 @@ import json
 async def get_params(settings):
     keyboard = InlineKeyboard(row_width=2)
     keyboard.row(
-        InlineButton(f'Orientation: {settings["orientation"]}', f'sd:orientation'),
-        InlineButton(f'Sampler: {settings["sampler"]}', f'sd:sampler'))
+        InlineButton(f'Orientation: {settings["orientation"]}', 'sd:orientation'),
+        InlineButton(f'Sampler: {settings["sampler"]}', 'sd:sampler')
+    )
     keyboard.row(
-        InlineButton(f'Steps: {settings["steps"]}', f'sd:steps'),
-        InlineButton(f'Count: {settings["batch_size"]}', f'sd:batch_size'),
-        InlineButton(f'CFG Scale: {settings["cfg_scale"]}', f'sd:cfg_scale'))
+        InlineButton(f'Steps: {settings["steps"]}', 'sd:steps'),
+        InlineButton(f'Count: {settings["batch_size"]}', 'sd:batch_size'),
+        InlineButton(f'CFG Scale: {settings["cfg_scale"]}', 'sd:cfg_scale')
+    )
     keyboard.row(
-        InlineButton(f'Upscale: {settings["upscale"]}', f'sd:upscale'),
+        InlineButton(f'Upscale: {settings["upscale"]}', 'sd:upscale'),
     )
     return keyboard
 
@@ -36,9 +38,9 @@ async def additional_settings(client, callback_query):
 
     keyboard = InlineKeyboard(row_width=2)
     for option in options[key]:
-        keyboard.row(
-            InlineButton(f"{option}", f"change:{key}:{option}"))
-    await callback_query.edit_message_text(f"✍️ Please choice settings below", reply_markup=keyboard)
+        keyboard.row(InlineButton(f"{option}", f"change:{key}:{option}"))
+        
+    await callback_query.edit_message_text("✍️ Please choice settings below", reply_markup=keyboard)
     await callback_query.answer()
 
 
@@ -58,11 +60,8 @@ async def process_change(client, callback_query):
     elif value == "True":
         value = True
 
-    print(type(value))
-    print(type(key))
     if key not in available_options or value not in available_options[key]:
         return await callback_query.answer("🚫 Invalid option", show_alert=True)
-
 
     pluginsettings, success = create_or_update_plugin_settings(plugin='txt2img', chat=callback_query.message.reply_to_message.from_user.id)
     settings = pluginsettings.settings

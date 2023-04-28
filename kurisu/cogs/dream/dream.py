@@ -32,15 +32,19 @@ async def refresh_task_status(client, task_id, notification_msg):
             images = process_response_raw(results['output'])
             execution_time = int(results['executionTime']) / 1000
             cost = 0.0002 * (execution_time + 5)
+            sampler = results['output']['parameters']['sampler_index']
             prompt = results['output']['parameters']['prompt']
             enable_hr = results['output']['parameters']['enable_hr']
             hr_scale = results['output']['parameters']['hr_scale'] if enable_hr else 1
             width = results['output']['parameters']['width'] * hr_scale
             height = results['output']['parameters']['height'] * hr_scale
             enable_hr = results['output']['parameters']['enable_hr']
-            caption = f"""**Job № `{task_id}` done in {execution_time} seconds.**\n\n**Prompt:** `{prompt}`\n**Upscaler:** {enable_hr}\n**Width:** {width}\n**Height:** {height}\n\nJob cost: `{round(cost, 4)}` USD"""
+            caption = f"""**Job № `{task_id}` done in {execution_time} seconds.**\n\n**Prompt:** `{prompt}`\n**Sampler:** {sampler}\n\n**Upscaler:** {enable_hr}\n**Width:** {width}\n**Height:** {height}\n\nJob cost: `{round(cost, 4)}` USD"""
 
             images[0].caption = caption
+            
+            task_db.parameters = results['output']['parameters']
+            task_db.save()
             logger.success(f"Job № `{task_id}` done in {execution_time} seconds.")
             try:
                 await client.send_media_group(chat_id=task_db.chat_id, reply_to_message_id=task_db.message_id, media=images)
@@ -91,17 +95,21 @@ async def txt2img(client, message):
 
     generation_options = {
         "prompt": "masterpiece, best quality, " + prompt,
-        "negative_prompt": default_params['negative_prompt'],
+        "negative_prompt": sd_config['negative_prompt'],
         "enable_hr": sd_config['upscale'],
-        "denoising_strength": float(default_params['denoising_strength']),
+        "denoising_strength": float(sd_config['denoising_strength']),
         "cfg_scale": float(sd_config['cfg_scale']),
         "steps": int(sd_config['steps']),
         "batch_size": int(sd_config['batch_size']),
-        "sampler": sd_config['sampler'],
+        "sampler_index": sd_config['sampler'],
+        "sampler_name": sd_config['sampler'],
         "width": int(width),
         "height": int(height),
-        "hr_upscaler": default_params['hr_upscaler'],
-        "hr_scale": float(default_params['hr_scale']),
+        "hr_upscaler": sd_config['hr_upscaler'],
+        "hr_scale": float(sd_config['hr_scale']),
+        "override_settings": {
+            "CLIP_stop_at_last_layers": 2,
+        }
     }
     payload = {"input": {"txt2img": generation_options}}
 

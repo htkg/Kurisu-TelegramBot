@@ -71,6 +71,7 @@ class RunPodTasks(BaseModel):
     user_id = BigIntegerField()
     message_id = BigIntegerField()
     status = CharField(max_length=60)
+    parameters = JSONField(null=True)
 
 def initialize_tables():
     with db:
