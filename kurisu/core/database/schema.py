@@ -72,6 +72,7 @@ class RunPodTasks(BaseModel):
     message_id = BigIntegerField()
     status = CharField(max_length=60)
     parameters = JSONField(null=True)
+    infotext = CharField(null=True)
 
 def initialize_tables():
     with db:
@@ -82,3 +83,8 @@ def initialize_tables():
 def prune_db():
     with db:
         db.drop_tables([Chat, Permission, ChatPermissions, Messages, Plugins, PluginSettings, RunPodTasks])
+
+# # Alter the table and add the new column
+# with db:
+#     db.create_tables([RunPodTasks])
+#     db.execute_sql('ALTER TABLE RunPodTasks ADD COLUMN infotext TEXT')
