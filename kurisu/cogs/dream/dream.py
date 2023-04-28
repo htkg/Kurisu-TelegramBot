@@ -77,7 +77,7 @@ async def refresh_task_status(client, task_id, notification_msg):
 
         await asyncio.sleep(5)
 
-@Client.on_message(filters.command(["dream"], prefixes="/") &~ filters.channel, group=1)
+@Client.on_message(filters.command(["dream"], prefixes="/") & ~ filters.reply & ~ filters.photo, group=2)
 async def txt2img(client, message):
     user_id = message.from_user.id if message.from_user else message.sender_chat.id
     pluginsettings = get_plugin_settings(plugin='txt2img', chat=user_id)
@@ -127,6 +127,9 @@ async def txt2img(client, message):
     notification_msg = await message.reply_text(notification_msg_text)
     await refresh_task_status(client, task_id, notification_msg=notification_msg)
 
+@Client.on_message(filters.command(["dream"], prefixes="/") & (filters.photo | filters.reply), group=2)
+async def img2img(client, message):
+    pass
     
 @Client.on_message(filters.command(["reset"], prefixes="/"), group=1)
 async def reset(client, message):
