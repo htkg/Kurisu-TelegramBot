@@ -2,7 +2,7 @@ from pyrogram import Client, filters
 from PIL import Image
 from io import BytesIO
 import base64
-from kurisu.cogs.dream.runpod_reqs import sync_run
+from kurisu.cogs.dream.requests import sync_run
 from loguru import logger
 from kurisu.core.database.methods import create_or_update_task, get_task
 import random

@@ -1,13 +1,43 @@
-
+from pyrogram.types import InputMediaPhoto
 import io
 import base64
 from PIL import Image
 import json
-from pyrogram.types import InputMediaPhoto
-from pykeyboard import InlineKeyboard, InlineButton
-from pyrogram import Client, filters
-from kurisu.core.database.methods import create_or_update_plugin_settings
-import json
+from loguru import logger
+from kurisu.core.database.methods import get_task
+from pyrogram.errors.exceptions.flood_420 import FloodWait
+import time
+import asyncio
+
+async def get_image_size(orientation):
+    if orientation == "portrait":
+        return 512, 768
+    elif orientation == "landscape":
+        return 768, 512
+    else:
+        return 512, 512
+
+
+def update_task_db(task_db, results):
+    task_db.status = results["status"]
+    try:
+        task_db.parameters = results["output"]["parameters"]
+        task_db.infotext = results["output"]["infotext"]
+    except:
+        pass
+    task_db.save()
+
+async def send_images(client, chat_id, message_id, images):
+    try:
+        images_msg = await client.send_media_group(
+            chat_id=chat_id, reply_to_message_id=message_id, media=images
+        )
+    except FloodWait:
+        await asyncio.sleep(30)
+        images_msg = await client.send_media_group(
+            chat_id=chat_id, reply_to_message_id=message_id, media=images
+        )
+    return images_msg
 
 def load_available_options():
     with open('kurisu/cogs/dream/data/options.json') as f:
@@ -25,70 +55,64 @@ def process_response_raw(res):
 
     return imgs
 
-
-async def get_params(settings):
-    keyboard = InlineKeyboard(row_width=2)
-    keyboard.row(
-        InlineButton(f'Orientation: {settings["orientation"]}', 'sd:orientation'),
-        InlineButton(f'Sampler: {settings["sampler"]}', 'sd:sampler')
-    )
-    keyboard.row(
-        InlineButton(f'Steps: {settings["steps"]}', 'sd:steps'),
-        InlineButton(f'Count: {settings["batch_size"]}', 'sd:batch_size'),
-        InlineButton(f'CFG Scale: {settings["cfg_scale"]}', 'sd:cfg_scale')
-    )
-    keyboard.row(
-        InlineButton(f'Upscale: {settings["upscale"]}', 'sd:upscale'),
-    )
-    return keyboard
+async def update_in_progress_message(notification_msg, task_id, iteration):
+    try:
+        await notification_msg.edit_text(
+            f"Job № `{task_id}` is in progress...\n\nHeartbeat: `{iteration}` (if heartbeat stops, then task suddenly died.)"
+        )
+    except Exception as e:
+        pass
 
 
-@Client.on_callback_query(filters.regex('^sd:'))
-async def additional_settings(client, callback_query):
-    options = load_available_options()
+async def handle_completed_task(client, results, task_id, notification_msg, start_time):
+    images = process_response_raw(results['output'])
+    execution_time = int(results['executionTime']) / 1000
+    cost = 0.0002 * (execution_time + 30)
 
-    if (callback_query.message.reply_to_message and
-            callback_query.from_user.id != callback_query.message.reply_to_message.from_user.id):
-        return await callback_query.answer("🚫 Permission denied",
-                                           show_alert=True)
+    output_params = results['output']['parameters']
+    enable_hr = output_params['enable_hr']
+    hr_scale = output_params['hr_scale'] if enable_hr else 1
+    width = round(output_params['width'] * hr_scale)
+    height = round(output_params['height'] * hr_scale)
 
-    key = callback_query.data.split(":")[1]
+    msg = format_completed_message(results, width, height, start_time, execution_time, cost)
+    images[0].caption = msg
 
-    if key not in options:
-        return await callback_query.answer("🚫 Invalid option", show_alert=True)
+    logger.success(f"Job № `{task_id}` done in {execution_time} seconds.")
+    await send_images_and_update_caption(client, task_id, notification_msg, images, msg)
 
-    keyboard = InlineKeyboard(row_width=2)
-    for option in options[key]:
-        keyboard.row(InlineButton(f"{option}", f"change:{key}:{option}"))
-        
-    await callback_query.edit_message_text("✍️ Please choice settings below", reply_markup=keyboard)
-    await callback_query.answer()
 
-@Client.on_callback_query(filters.regex('^change:'))
-async def process_change(client, callback_query):
-    options = load_available_options()
+async def send_images_and_update_caption(client, task_id, notification_msg, images, msg):
+    task_db = get_task(task_guid=task_id)
     
-    reply_to_msg = callback_query.message.reply_to_message
-    
-    if not callback_query.from_user.id == reply_to_msg.from_user.id:
-        await callback_query.answer("🚫 Permission denied", show_alert=True)
-        return
+    try:
+        images_msg = await client.send_media_group(chat_id=task_db.chat_id, reply_to_message_id=task_db.message_id, media=images)
+    except FloodWait:
+        await asyncio.sleep(30)
+        images_msg = await client.send_media_group(chat_id=task_db.chat_id, reply_to_message_id=task_db.message_id, media=images)
 
-    key, value = callback_query.data.split(":")[1:]
+    old_msg_time = notification_msg.date
+    images_msg_time = images_msg[0].date
+    time_delta = round((images_msg_time - old_msg_time).total_seconds(), 2)
 
-    if value in ("False", "True"):
-        value = True if value == "True" else False
+    msg += f"<i> | Actual: {time_delta}s</i>"
+    await images_msg[0].edit_caption(caption=msg)
+    await notification_msg.delete()
 
-    if key not in options or value not in options[key]:
-        await callback_query.answer("🚫 Invalid option", show_alert=True)
-        return
 
-    pluginsettings, success = create_or_update_plugin_settings(plugin='txt2img', chat=reply_to_msg.from_user.id)
-    settings = pluginsettings.settings
-    settings[key] = value
-    pluginsettings, success = create_or_update_plugin_settings(plugin='txt2img', chat=reply_to_msg.from_user.id, params=settings)
+def format_completed_message(results, width, height, start_time, execution_time, cost):
+    info_text = json.loads(results['output']['info'])
+    msg = f"**Job № `{results['id']}`**\n═══"
 
-    kb = await get_params(settings)
-    await callback_query.edit_message_text(f"✅ {key} set to {value}", reply_markup=kb)
-    await callback_query.answer("👍")
+    for parameter in info_text:
+        txt_parameter = info_text[parameter]
+        if txt_parameter and not parameter in ['prompt', 'negative_prompt', 'all_prompts', 'all_negative_prompts','infotexts', 'width', 'height', 'sd_model_hash', 'seed_resize_from_w', 'seed_resize_from_h']:
+            if type(txt_parameter) == list:
+                txt_parameter = "`, `".join([str(item) for item in txt_parameter])
 
+            msg += f"\n**{parameter.replace('_', ' ').title()}**: `{txt_parameter}`"
+
+    code_exc_time = round(time.time() - start_time, 2)
+    msg += f"\n**Width**: `{width}`\n**Height**: `{height}`\n═══\n<i>Cost: {round(cost, 4)}$ | Inference: {execution_time}s | Code: {code_exc_time}s</i>"
+
+    return msg
